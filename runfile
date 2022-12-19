@@ -1,0 +1,78 @@
+#! /bin/bash
+
+#   12-01-2020
+#   Author: Maral Budak (mbudak@umich.edu)
+#
+#   Specify the inputs (dB, Lu_maxs, Lu_mins, Lh_maxs, Lh_mins, trials, colors) below.
+#
+#   dB:       Sound pressure level in decibels (=70 in Figs 5A & 6A)
+#   Lu_maxs:  Maximum Lu value in an SGN population
+#   Lu_mins:  Minimum Lu value in an SGN population
+#   Lh_maxs:  Maximum Lh value in an SGN population
+#   Lh_mins:  Minimum Lh value in an SGN population
+#   trials:   number of populations to be averaged (=50 in Figs 5A & 6A)
+#   colors:   the colors for each CAP plot (need to be matplotlib colors - see https://matplotlib.org/3.1.0/gallery/color/named_colors.html)
+#
+#   The value of the k-th entry of each array below (Lu_maxs, Lu_mins, Lh_maxs, Lh_mins, colors) corresponds to the k-th population.
+#   Therefore, the length of each array should be equal.
+#
+#   For the i-th population to be homogeneous (Lu=10, Lh=1):       
+#        Lu_maxs[i]=Lu_mins[i]=10 
+#        Lh_maxs[i]=Lh_mins[i]=1
+#
+#   For the j-th population to be heterogeneous (10<Lu<20, Lh=1):  
+#        Lu_maxs[j]=20 
+#        Lu_mins[j]=10
+#        Lh_maxs=1
+#        Lh_mins=1
+#
+#  To generate Fig.5A:
+#       dB=70
+#       Lu_maxs=(10.0 11.0 15.0 20.0 20.0)
+#	Lu_mins=(10.0 11.0 15.0 20.0 10.0)
+#	Lh_maxs=(1.0 1.0 1.0 1.0 1.0)
+#	Lh_mins=(1.0 1.0 1.0 1.0 1.0)
+#	trials=50
+#	colors=("red" "blue" "magenta" "green" "black")
+#
+#
+#  To generate Fig.6A:
+#       dB=70
+#       Lu_maxs=(10.0 10.0 10.0 10.0 10.0)
+#       Lu_mins=(10.0 10.0 10.0 10.0 10.0)
+#       Lh_maxs=(1.0 2.0 6.0 11.0 11.0)
+#       Lh_mins=(1.0 2.0 6.0 11.0 1.0)
+#       trials=50
+#       colors=("red" "blue" "magenta" "green" "black")
+#
+#   The output of the simulation is:
+#      plot.png: Plot of simulated CAPs
+#      probs_*dB.mat: release probabilities from inner hair cells, size(63,15000) array (21 channels x 3 types of hair cells [HT, MT and LT] = 63 rows, 15000 time steps)
+#      spikes_*dB_Lumax*_Lumin*_Lhmax*_Lhmin*.np: spikes from each auditory nerve, size(trials, 6300) array (6300 auditory nerves per population)
+#      
+#
+
+### SPECIFY THE INPUTS
+
+dB=70
+Lu_maxs=(10.0 11.0 15.0 20.0 20.0)
+Lu_mins=(10.0 11.0 15.0 20.0 10.0)
+Lh_maxs=(1.0 1.0 1.0 1.0 1.0)
+Lh_mins=(1.0 1.0 1.0 1.0 1.0)
+trials=50
+colors=("red" "blue" "magenta" "green" "black")
+
+########################
+
+matlab -r "calcReleaseProbs($dB); exit"
+
+len=${#Lu_maxs[@]}
+
+for (( i=0; i<$len; i++ ))
+do
+	python generate_AN_spikes.py $dB $trials ${Lu_maxs[$i]} ${Lu_mins[$i]} ${Lh_maxs[$i]} ${Lh_mins[$i]} 
+	python plotConvolution.py $dB $trials ${Lu_maxs[$i]} ${Lu_mins[$i]} ${Lh_maxs[$i]} ${Lh_mins[$i]} ${colors[$i]}
+done
+
+rm plot.pickle
+rm timestep_10000Hz.mat

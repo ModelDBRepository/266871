@@ -1,0 +1,107 @@
+//This script creates an auditory fiber with NEURON software and is called by generate_AN_spikes.py
+//The parameters are from Woo et al., JARO 11, 283–296 (2010). https://doi.org/10.1007/s10162-009-0199-2 
+
+load_file("nrngui.hoc")
+xopen("Na_Channel.ses")
+xopen("K_Channel.ses")
+
+secondorder = 0
+tstop = 10
+steps_per_ms = 200
+dt = 0.005
+
+//Auditory fiber morphology
+length = 10  //unmyelinated segment length (Lu) in um
+no_of_my=5   
+l_my=40      //myelin length in um
+l_node=1     //node length in um
+
+d_my=2.2    //myelin diameter (um)
+d_node=1.2  //node diameter (um)
+
+//Na+ and K+ channel conductances (S/cm-2)
+gna_node=0.1812
+gk_node=0.225
+
+//Cytoplasmic resistances (ohm-cm)
+ra        = 637.8*13
+ra_my     = 637.8*13
+
+//Membrane conductances (S/cm-2)
+g_node    = 1/1662
+g_my      = 1/1300000
+
+//Membrane capacitances (uF/cm-2)
+c_m       = 0.05125
+c_m_myelin= 0.0012
+
+//Nernst potentials of K+ and Na+ (mV)
+Ek = -88
+Ena = 66
+
+v_init    = -78  //mV
+celsius   = 37  //degree celcius
+
+//Create the nodes and myelins of the fiber
+create node[no_of_my+1],myelin[no_of_my]
+
+for (i=0; i<no_of_my; i=i+1) {
+    node[i] {           
+      diam = d_node
+      insert na
+      insert k
+      gmax_k=gk_node
+    }
+
+    if(i==0){node[i].L=length } else{node[i].L=l_node}
+    if(i==0){node[i].gmax_na = gna_node/15} else{node[i].gmax_na = gna_node}
+    if(i==0){node[i].gmax_k = gk_node/15} else{node[i].gmax_k = gk_node}
+    node[i].nseg=node[i].L
+
+    myelin[i] {        
+      L = l_my
+      nseg = 9
+      diam = d_my      
+    }
+}
+
+node[i] {              
+      L = l_node
+      nseg = L
+      diam = d_node
+      insert na
+      insert k
+      gmax_na = gna_node
+      gmax_k = gk_node
+    }
+
+//connect nodes and myelins
+node[0] connect node[1](0), 1
+node[1] connect myelin[0](0), 1
+
+for i=0,no_of_my-2  {
+      myelin[i] connect node[i+2](0), 1
+      node[i+2] connect myelin[i+1](0), 1
+  }
+
+
+// Assign passive membrane properties to nodes and myelins
+forsec "myelin" {
+  insert pas
+  Ra = ra_my
+  cm = c_m_myelin
+  g_pas = g_my
+  e_pas = v_init
+}
+
+forsec "node" {
+  insert pas
+  g_pas = g_node
+  e_pas = v_init
+  Ra = ra
+  cm = c_m
+}
+
+//Assign Nernst potentials to the channels in nodes
+forsec "node" ena = Ena     
+forsec "node" ek = Ek      
